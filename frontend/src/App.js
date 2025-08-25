@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { keycloak, initializeKeycloak } from './keycloak';
 import ImageClassifier from './components/ImageClassifier';
 import UserInfo from './components/UserInfo';
+import ElectricBackground from './components/ElectricBackground';
 import './App.css';
 
 function App() {
@@ -12,7 +13,7 @@ function App() {
   useEffect(() => {
     console.log('App useEffect triggered');
     console.log('Keycloak config:', {
-      url: 'http://localhost:8080',  // NO /auth
+      url: 'http://localhost:8080',
       realm: 'ImageClassifier',
       clientId: 'classifier-app'
     });
@@ -46,6 +47,7 @@ function App() {
   if (loading) {
     return (
       <div className="App">
+        <ElectricBackground />
         <div className="loading">
           <h2>Caricamento...</h2>
         </div>
@@ -56,6 +58,7 @@ function App() {
   if (!authenticated) {
     return (
       <div className="App">
+        <ElectricBackground />
         <div className="login-required">
           <h2>Accesso richiesto</h2>
           <button onClick={() => keycloak.login()}>
@@ -68,8 +71,9 @@ function App() {
 
   return (
     <div className="App">
+      <ElectricBackground />
       <header className="App-header">
-        <h1>🖼️ Image Classifier</h1>
+        <h1>🖼️ IMAGE CLASSIFIER</h1>
         <UserInfo 
           username={keycloak.tokenParsed?.preferred_username}
           roles={userRoles}

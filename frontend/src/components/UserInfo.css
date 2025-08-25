@@ -2,21 +2,23 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: rgba(255, 255, 255, 0.15);
-  padding: 15px 20px;
-  border-radius: 15px;
-  margin: 10px 0;
+  background: var(--card-bg, #fff);
+  border-radius: var(--card-radius, 16px);
+  box-shadow: var(--card-shadow, 0 2px 8px rgba(0,0,0,0.08));
+  padding: var(--card-padding, 1.5rem);
 }
 
 .user-details h3 {
-  margin: 0 0 10px 0;
-  color: #fff;
+  margin: 0;
+  color: var(--clr);
+  font-size: 1.2rem;
+  font-weight: 700;
 }
 
 .user-roles h4 {
-  margin: 5px 0;
-  font-size: 14px;
-  opacity: 0.9;
+  margin: 0 0 0.5rem 0;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
 }
 
 .roles-list {
@@ -26,23 +28,36 @@
 }
 
 .role-badge {
-  background: rgba(255, 255, 255, 0.2);
-  padding: 4px 12px;
-  border-radius: 20px;
-  font-size: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.3);
+  background: rgba(88, 188, 130, 0.15);
+  border: 1px solid var(--clr);
+  color: var(--bg-light);
+  padding: 0.3rem 0.8rem;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  transition: var(--transition);
+}
+
+.role-badge:hover {
+  background: rgba(88, 188, 130, 0.25);
+  transform: translateY(-2px);
 }
 
 .logout-btn {
-  background: #f44336;
+  background: linear-gradient(135deg, #f44336, #cc1e1e);
   color: white;
   border: none;
-  padding: 10px 20px;
-  border-radius: 20px;
+  padding: 0.7rem 1.5rem;
+  border-radius: 25px;
   cursor: pointer;
-  transition: all 0.3s ease;
+  font-weight: 600;
+  letter-spacing: 1px;
+  transition: var(--transition);
+  box-shadow: 0 4px 12px rgba(244, 67, 54, 0.3);
 }
 
 .logout-btn:hover {
-  background: #da190b;
+  background: linear-gradient(135deg, #ff5a4f, #e01b1b);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(244, 67, 54, 0.4);
 }
