@@ -21,10 +21,11 @@ services:
       KC_DB_USERNAME: ${POSTGRES_USER}
       KC_DB_PASSWORD: ${POSTGRES_PASSWORD}
       KC_DB_DATABASE: ${POSTGRES_DB}
-      # KC_HTTP_RELATIVE_PATH: ${KC_HTTP_RELATIVE_PATH}
       KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN}
       KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
     ports:
       - 8080:8080
     depends_on:
       - postgres
+    volumes:
+      - ./themes:/opt/keycloak/themes:ro

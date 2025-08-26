@@ -49,7 +49,7 @@ function App() {
       <div className="App">
         <ElectricBackground />
         <div className="loading">
-          <h2>Caricamento...</h2>
+          <h2>Loading...</h2>
         </div>
       </div>
     );
@@ -60,7 +60,7 @@ function App() {
       <div className="App">
         <ElectricBackground />
         <div className="login-required">
-          <h2>Accesso richiesto</h2>
+          <h2>Login Required</h2>
           <button onClick={() => keycloak.login()}>
             Login
           </button>

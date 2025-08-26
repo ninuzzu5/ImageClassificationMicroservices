@@ -1,0 +1,131 @@
+:root {
+  --clr: #58bc82;
+  --accent-secondary: #82bc58;
+  --text-primary: #f0f0f0;
+  --glass-bg: rgba(239, 239, 239, 0.07);
+  --glass-border: rgba(239, 239, 239, 0.15);
+  --shadow-light: 0 8px 32px rgba(0, 0, 0, 0.15);
+  --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  font-family: 'Quantico', sans-serif;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background: #1a1a1a;
+  color: var(--text-primary);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+}
+
+/* Container principale */
+.login-container {
+  background: var(--glass-bg);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(88, 188, 130, 0.3);
+  border-radius: 15px;
+  box-shadow: 
+    0 8px 32px rgba(0, 0, 0, 0.4),
+    0 0 0 1px rgba(88, 188, 130, 0.1);
+  
+  padding: 2.5rem;
+  width: 400px;
+  max-width: 90vw;
+  text-align: center;
+  position: relative;
+  z-index: 10;
+}
+
+.login-container h2 {
+  font-size: 1.8rem;
+  color: var(--clr);
+  margin-bottom: 1.5rem;
+  font-weight: 700;
+  text-shadow: 
+    0 0 10px rgba(88, 188, 130, 0.5),
+    0 2px 4px rgba(0, 0, 0, 0.8);
+  letter-spacing: 2px;
+}
+
+/* Input */
+.form-group {
+  margin-bottom: 1.5rem;
+  text-align: left;
+}
+
+.form-group label {
+  font-size: 0.9rem;
+  color: var(--clr);
+  display: block;
+  margin-bottom: 0.5rem;
+  text-shadow: 
+    0 2px 4 px rgba(0, 0, 0, 0.8);
+}
+
+.form-group input {
+  width: 94%;
+  padding: 0.8rem 0.8rem;
+  border-radius: 10px;
+  border: 1px solid var(--glass-border);
+  background: rgba(43, 43, 43, 0.8);
+  color: var(--text-primary);
+  font-size: 1rem;
+  outline: none;
+  transition: var(--transition);
+}
+
+.form-group input:focus {
+  border-color: var(--clr);
+  box-shadow: 0 0 10px rgba(88, 188, 130, 0.5);
+}
+
+/* Bottone */
+.form-actions button {
+  background: rgba(43, 43, 43, 0.9);
+  color: var(--text-primary);
+  border: 2px solid rgba(88, 188, 130, 0.3);
+  padding: 1rem 2rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  border-radius: 3rem;
+  cursor: pointer;
+  margin-top: 1rem;
+  transition: var(--transition);
+  position: relative;
+  overflow: hidden;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  min-width: 200px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+}
+
+.form-actions button:hover {
+  background: rgba(88, 188, 130, 0.9);
+  border-color: rgba(88, 188, 130, 0.8);
+  transform: translateY(-2px);
+  box-shadow: 
+    0 8px 25px rgba(88, 188, 130, 0.4),
+    0 0 30px rgba(88, 188, 130, 0.2);
+}
+
+.error-message {
+  color: #ff6b6b;
+  font-size: 0.85rem;
+  margin-top: 0.3rem;
+  display: block;
+}
+
+.kc-feedback-text.error {
+  color: #ff6b6b;
+  margin-bottom: 1rem;
+}
+.kc-feedback-text.warning {
+  color: #f1c40f;
+  margin-bottom: 1rem;
+}
+.kc-feedback-text.info {
+  color: #3498db;
+  margin-bottom: 1rem;
+}
