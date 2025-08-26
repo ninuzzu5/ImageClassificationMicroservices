@@ -14,7 +14,6 @@ const ElectricBackground = () => {
     const resizeCanvas = () => {
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
-      console.log('Canvas resized to:', canvas.width, 'x', canvas.height);
     };
 
     // Classe per le linee diagonali con impulsi interni
@@ -41,14 +40,22 @@ const ElectricBackground = () => {
         const radians = (angle * Math.PI) / 180;
         
         // Calcola una linea che attraversa tutto lo schermo diagonalmente
+        // con un margine extra per coprire anche gli angoli
         const diagonal = Math.sqrt(canvas.width ** 2 + canvas.height ** 2);
-        const centerX = canvas.width / 2;
+        const extraLength = diagonal * 0.5; // Margine extra per sicurezza
+        const totalLength = diagonal + extraLength * 2;
         
-        // Punto di partenza e arrivo per coprire tutto lo schermo
-        this.startX = centerX - diagonal * Math.cos(radians);
-        this.startY = this.y - diagonal * Math.sin(radians);
-        this.endX = centerX + diagonal * Math.cos(radians);
-        this.endY = this.y + diagonal * Math.sin(radians);
+        const centerX = canvas.width / 2;
+        const centerY = canvas.height / 2;
+        
+        // Calcola i punti di inizio e fine della linea
+        // Trasla il centro della linea al punto y specificato
+        const offsetY = this.y - centerY;
+        
+        this.startX = centerX - (totalLength / 2) * Math.cos(radians);
+        this.startY = centerY + offsetY - (totalLength / 2) * Math.sin(radians);
+        this.endX = centerX + (totalLength / 2) * Math.cos(radians);
+        this.endY = centerY + offsetY + (totalLength / 2) * Math.sin(radians);
         
         this.totalLength = Math.sqrt(
           Math.pow(this.endX - this.startX, 2) + 
@@ -157,11 +164,15 @@ const ElectricBackground = () => {
     const createTubes = () => {
       tubes.length = 0;
       
-      // Spaziatura più ampia per coprire meglio lo schermo
-      const spacing = 150;
-      // Estendi molto di più l'area per essere sicuri di coprire tutto
-      const startY = -500;
-      const endY = canvas.height + 500;
+      // Spaziatura più ampia per linee meno dense
+      const spacing = 200; // Aumentato da 120-150 a 200
+      
+      // Calcola l'area necessaria per coprire tutto lo schermo
+      const diagonal = Math.sqrt(canvas.width ** 2 + canvas.height ** 2);
+      const margin = diagonal * 0.3;
+      
+      const startY = -margin;
+      const endY = canvas.height + margin;
       
       for (let y = startY; y < endY; y += spacing) {
         const tube = new ElectricTube(y);
@@ -169,8 +180,6 @@ const ElectricBackground = () => {
         tube.pulse.position = Math.random() * -500 - (tubes.length * 30);
         tubes.push(tube);
       }
-      
-      console.log('Created', tubes.length, 'tubes');
     };
 
     // Funzione di animazione
@@ -189,7 +198,6 @@ const ElectricBackground = () => {
     };
 
     // Inizializzazione
-    console.log('Initializing ElectricBackground...');
     resizeCanvas();
     createTubes();
     animate();
@@ -197,6 +205,7 @@ const ElectricBackground = () => {
     // Event listeners
     const handleResize = () => {
       resizeCanvas();
+      // Ricalcola solo i punti dei tubi esistenti invece di ricrearli tutti
       tubes.forEach(tube => tube.calculatePoints());
     };
 
@@ -221,7 +230,7 @@ const ElectricBackground = () => {
         left: 0,
         width: '100vw',
         height: '100vh',
-        zIndex: 0, // Cambiato da -1 a 0
+        zIndex: 0,
         backgroundColor: '#1a1a1a',
         pointerEvents: 'none'
       }}

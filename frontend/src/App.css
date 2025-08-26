@@ -11,6 +11,7 @@
   --shadow-light: 0 8px 32px rgba(0, 0, 0, 0.15);
   --shadow-medium: 0 12px 48px rgba(0, 0, 0, 0.25);
   --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-smooth: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
 body {
@@ -32,125 +33,173 @@ body {
   display: none;
 }
 
-.App-header {
+/* Container fluido */
+.fluid-container {
   position: relative;
   z-index: 100;
+  max-width: 900px;
+  margin: 0 auto;
   padding: 2rem;
-  background: var(--glass-bg);
-  backdrop-filter: blur(20px);
-  border-bottom: 1px solid var(--glass-border);
-  margin-bottom: 2rem;
-  box-shadow: var(--shadow-light);
-  border-radius: 0 0 20px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  min-height: 100vh;
 }
 
-.App-header h1 {
-  margin: 0 0 1.5rem 0;
-  font-size: clamp(2rem, 5vw, 3.5rem);
-  font-weight: 700;
+/* Titolo principale */
+.main-title {
   text-align: center;
+  margin-bottom: 1rem;
+  animation: titleFloat 3s ease-in-out infinite alternate;
+}
+
+@keyframes titleFloat {
+  from {
+    transform: translateY(0px);
+  }
+  to {
+    transform: translateY(-10px);
+  }
+}
+
+.main-title h1 {
+  margin: 0;
+  font-size: clamp(2.5rem, 6vw, 4rem);
+  font-weight: 700;
   color: var(--clr);
   text-shadow: 
-    0 0 10px rgba(88, 188, 130, 0.3),
-    0 2px 4px rgba(0, 0, 0, 0.3);
-  letter-spacing: 2px;
+    0 0 20px rgba(88, 188, 130, 0.4),
+    0 4px 8px rgba(0, 0, 0, 0.3);
+  letter-spacing: 3px;
   position: relative;
+  filter: drop-shadow(0 0 10px rgba(88, 188, 130, 0.3));
 }
 
-.App-header h1::after {
+.main-title h1::after {
   content: '';
   position: absolute;
-  bottom: -10px;
+  bottom: -15px;
   left: 50%;
   transform: translateX(-50%);
-  width: 60px;
-  height: 2px;
-  background: linear-gradient(90deg, transparent, var(--clr), transparent);
+  width: 80px;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, var(--clr), var(--accent-secondary), var(--clr), transparent);
   animation: pulse-glow 2s ease-in-out infinite alternate;
+  border-radius: 2px;
 }
 
 @keyframes pulse-glow {
   from {
     box-shadow: 0 0 5px var(--clr);
     opacity: 0.7;
+    width: 80px;
   }
   to {
-    box-shadow: 0 0 20px var(--clr), 0 0 30px rgba(88, 188, 130, 0.3);
+    box-shadow: 0 0 25px var(--clr), 0 0 35px rgba(88, 188, 130, 0.3);
     opacity: 1;
+    width: 120px;
   }
 }
 
-.App-main {
-  position: relative;
-  z-index: 100;
-  max-width: 1000px;
-  margin: 0 auto;
-  padding: 0 2rem 2rem;
-}
-
-/* Card base */
+/* Card base migliorata */
 .card {
-  background: rgba(239, 239, 239, 0.1); /* Leggermente più opaco */
-  backdrop-filter: blur(25px); /* Blur più intenso */
-  border-radius: 20px;
+  background: rgba(239, 239, 239, 0.08);
+  backdrop-filter: blur(25px);
+  border-radius: 24px;
   border: 1px solid var(--glass-border);
-  box-shadow: var(--shadow-light);
-  padding: 1.5rem;
-  margin-bottom: 1.5rem;
+  box-shadow: 
+    var(--shadow-light),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  padding: 2rem;
+  position: relative;
+  overflow: hidden;
+  transition: var(--transition-smooth);
+  animation: cardSlideIn 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+  opacity: 0;
+  transform: translateY(30px);
 }
 
+@keyframes cardSlideIn {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, 
+    transparent 0%, 
+    var(--clr) 30%, 
+    var(--accent-secondary) 70%, 
+    transparent 100%
+  );
+  opacity: 0;
+  transition: var(--transition);
+}
+
+.card:hover {
+  transform: translateY(-8px);
+  box-shadow: 
+    0 20px 60px rgba(0, 0, 0, 0.3),
+    0 0 0 1px rgba(88, 188, 130, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.card:hover::before {
+  opacity: 1;
+}
+
+/* Stati di loading e login */
 .loading, .login-required {
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  
-  /* Dimensioni più piccole e centrato */
   width: 400px;
   max-width: 90vw;
-  padding: 2.5rem;
+  padding: 3rem;
   margin: 0 auto;
-  
-  /* Posizionamento centrato verticalmente e orizzontalmente */
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  
-  /* Z-index alto per stare sopra il canvas */
   z-index: 100;
-  
-  /* Sfondo trasparente per vedere le linee */
   background: rgba(239, 239, 239, 0.08);
-  backdrop-filter: blur(20px);
+  backdrop-filter: blur(25px);
   border: 1px solid rgba(88, 188, 130, 0.3);
-  border-radius: 15px;
+  border-radius: 20px;
   box-shadow: 
-    0 8px 32px rgba(0, 0, 0, 0.4),
+    0 12px 40px rgba(0, 0, 0, 0.4),
     0 0 0 1px rgba(88, 188, 130, 0.1);
-  
   text-align: center;
 }
 
 .loading h2, .login-required h2 {
-  font-size: 1.8rem;
+  font-size: 2rem;
   color: var(--clr);
-  margin-bottom: 1.5rem;
+  margin-bottom: 2rem;
   font-weight: 700;
   text-shadow: 
-    0 0 10px rgba(88, 188, 130, 0.5),
+    0 0 15px rgba(88, 188, 130, 0.5),
     0 2px 4px rgba(0, 0, 0, 0.8);
 }
 
 .loading::before {
   content: '';
-  width: 50px;
-  height: 50px;
-  border: 3px solid var(--clr-alpha);
-  border-top: 3px solid var(--clr);
+  width: 60px;
+  height: 60px;
+  border: 4px solid var(--clr-alpha);
+  border-top: 4px solid var(--clr);
   border-radius: 50%;
   animation: spin 1s linear infinite;
   margin-bottom: 2rem;
+  box-shadow: 0 0 20px rgba(88, 188, 130, 0.3);
 }
 
 @keyframes spin {
@@ -162,21 +211,23 @@ body {
   background: rgba(43, 43, 43, 0.9);
   color: var(--text-primary);
   border: 2px solid rgba(88, 188, 130, 0.3);
-  padding: 1rem 2rem;
+  padding: 1.2rem 2.5rem;
   font-size: 1.1rem;
   font-weight: 600;
   font-family: 'Quantico', sans-serif;
   border-radius: 3rem;
   cursor: pointer;
   margin-top: 1.5rem;
-  transition: var(--transition);
+  transition: var(--transition-smooth);
   position: relative;
   overflow: hidden;
   text-transform: uppercase;
   letter-spacing: 1px;
   min-width: 200px;
   backdrop-filter: blur(10px);
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+  box-shadow: 
+    0 4px 15px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
 .login-required button::before {
@@ -188,20 +239,21 @@ body {
   height: 100%;
   background: linear-gradient(90deg, 
     transparent, 
-    rgba(88, 188, 130, 0.2), 
+    rgba(88, 188, 130, 0.3), 
     transparent
   );
-  transition: left 0.5s;
+  transition: left 0.6s ease;
 }
 
 .login-required button:hover {
-  background: rgba(88, 188, 130, 0.9);
+  background: linear-gradient(135deg, rgba(88, 188, 130, 0.9), rgba(130, 188, 88, 0.9));
   color: var(--text-primary);
   border-color: rgba(88, 188, 130, 0.8);
-  transform: translateY(-2px);
+  transform: translateY(-3px);
   box-shadow: 
-    0 8px 25px rgba(88, 188, 130, 0.4),
-    0 0 30px rgba(88, 188, 130, 0.2);
+    0 12px 30px rgba(88, 188, 130, 0.4),
+    0 0 40px rgba(88, 188, 130, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
 .login-required button:hover::before {
@@ -209,34 +261,52 @@ body {
 }
 
 .login-required button:active {
-  transform: translateY(0);
+  transform: translateY(-1px);
 }
 
 /* Responsive Design */
 @media (max-width: 768px) {
-  .App-header {
+  .fluid-container {
     padding: 1.5rem 1rem;
+    gap: 1.5rem;
   }
   
-  .App-main {
-    padding: 0 1rem 1rem;
+  .main-title h1 {
+    font-size: 2.5rem;
+    letter-spacing: 2px;
   }
   
-  .App-header h1 {
-    font-size: 2rem;
-    margin-bottom: 1rem;
+  .card {
+    padding: 1.5rem;
   }
 }
 
 @media (max-width: 480px) {
-  .App-header {
+  .fluid-container {
     padding: 1rem;
-    margin-bottom: 1rem;
+    gap: 1rem;
+  }
+  
+  .main-title h1 {
+    font-size: 2rem;
   }
   
   .login-required button {
-    padding: 0.8rem 1.5rem;
+    padding: 1rem 2rem;
     font-size: 1rem;
     min-width: 180px;
   }
+}
+
+/* Animazione delay per le card */
+.card:nth-child(2) {
+  animation-delay: 0.1s;
+}
+
+.card:nth-child(3) {
+  animation-delay: 0.2s;
+}
+
+.card:nth-child(4) {
+  animation-delay: 0.3s;
 }

@@ -18,21 +18,15 @@ function App() {
       clientId: 'classifier-app'
     });
     
-    // Usa la funzione wrapper per inizializzazione sicura
     initializeKeycloak()
       .then((authenticated) => {
         console.log('Keycloak initialized successfully. Authenticated:', authenticated);
         setAuthenticated(authenticated);
         
         if (authenticated) {
-          // Estrai i ruoli dell'utente
           const roles = keycloak.realmAccess?.roles || [];
           const imageRoles = roles.filter(role => role.includes('-access'));
           setUserRoles(imageRoles);
-          
-          console.log('User info:', keycloak.tokenParsed);
-          console.log('User roles:', imageRoles);
-          console.log('Token:', keycloak.token);
         }
         
         setLoading(false);
@@ -72,21 +66,27 @@ function App() {
   return (
     <div className="App">
       <ElectricBackground />
-      <header className="App-header">
-        <h1>🖼️ IMAGE CLASSIFIER</h1>
+      
+      {/* Layout fluido senza header fisso */}
+      <div className="fluid-container">
+        {/* Titolo principale */}
+        <div className="main-title">
+          <h1>IMAGE CLASSIFIER</h1>
+        </div>
+        
+        {/* Card UserInfo compatta */}
         <UserInfo 
           username={keycloak.tokenParsed?.preferred_username}
           roles={userRoles}
           onLogout={() => keycloak.logout()}
         />
-      </header>
-      
-      <main className="App-main">
+        
+        {/* Card ImageClassifier principale */}
         <ImageClassifier 
           token={keycloak.token}
           userRoles={userRoles}
         />
-      </main>
+      </div>
     </div>
   );
 }

@@ -21,10 +21,14 @@ function ImageClassifier({ token, userRoles }) {
   const [prediction, setPrediction] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [isDragOver, setIsDragOver] = useState(false);
 
   const handleFileSelect = (event) => {
     const file = event.target.files[0];
-    
+    processFile(file);
+  };
+
+  const processFile = (file) => {
     if (file) {
       if (file.type.startsWith('image/')) {
         setSelectedFile(file);
@@ -40,6 +44,30 @@ function ImageClassifier({ token, userRoles }) {
       } else {
         setError('Seleziona un file immagine valido');
       }
+    }
+  };
+
+  // Gestori drag and drop
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(true);
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+
+    const files = e.dataTransfer.files;
+    if (files && files[0]) {
+      processFile(files[0]);
     }
   };
 
@@ -86,112 +114,156 @@ function ImageClassifier({ token, userRoles }) {
   const renderPredictions = () => {
     if (!prediction) return null;
 
+    // Mostra solo i top 3 risultati
+    const topPredictions = Object.entries(prediction.predictions)
+      .sort(([,a], [,b]) => b - a)
+      .slice(0, 3);
+
     return (
-      <div className="prediction-results">
-        <h3>📊 Risultati Classificazione</h3>
+      <div className="prediction-results card">
+        <div className="results-header">
+          <h3>🎯 Top 3 Predizioni</h3>
+          {prediction.predicted_class !== undefined && (
+            <div className="winner-badge">
+              <span className="winner-emoji">
+                {CIFAR10_CLASSES[prediction.predicted_class].emoji}
+              </span>
+              <span className="winner-text">
+                {CIFAR10_CLASSES[prediction.predicted_class].name}
+              </span>
+              <span className="winner-confidence">
+                {(prediction.confidence * 100).toFixed(1)}%
+              </span>
+            </div>
+          )}
+        </div>
         
-        {prediction.predictions && (
-          <div className="predictions-list">
-            {Object.entries(prediction.predictions)
-              .sort(([,a], [,b]) => b - a) // Ordina per probabilità
-              .map(([classId, probability]) => {
-                const classInfo = CIFAR10_CLASSES[parseInt(classId)];
-                const isTopPrediction = classId === prediction.predicted_class?.toString();
-                
-                return (
-                  <div 
-                    key={classId} 
-                    className={`prediction-item ${isTopPrediction ? 'top-prediction' : ''}`}
-                  >
-                    <span className="class-info">
-                      {classInfo.emoji} {classInfo.name}
-                    </span>
-                    <div className="probability-bar">
+        <div className="predictions-compact">
+          {topPredictions.map(([classId, probability], index) => {
+            const classInfo = CIFAR10_CLASSES[parseInt(classId)];
+            const isWinner = classId === prediction.predicted_class?.toString();
+            
+            return (
+              <div 
+                key={classId} 
+                className={`prediction-compact ${isWinner ? 'winner' : ''}`}
+                style={{ animationDelay: `${index * 0.1}s` }}
+              >
+                <div className="prediction-rank">#{index + 1}</div>
+                <div className="prediction-info">
+                  <div className="prediction-class">
+                    <span className="class-emoji">{classInfo.emoji}</span>
+                    <span className="class-name">{classInfo.name}</span>
+                  </div>
+                  <div className="prediction-score">
+                    <div className="score-bar">
                       <div 
-                        className="probability-fill" 
-                        style={{ width: `${probability * 100}%` }}
+                        className="score-fill" 
+                        style={{ 
+                          width: `${probability * 100}%`,
+                          animationDelay: `${0.5 + index * 0.1}s`
+                        }}
                       ></div>
                     </div>
-                    <span className="probability-text">
+                    <span className="score-text">
                       {(probability * 100).toFixed(1)}%
                     </span>
                   </div>
-                );
-              })
-            }
-          </div>
-        )}
-
-        {prediction.predicted_class !== undefined && (
-          <div className="final-prediction">
-            <h4>🎯 Predizione Finale:</h4>
-            <div className="predicted-class">
-              {CIFAR10_CLASSES[prediction.predicted_class].emoji}{' '}
-              {CIFAR10_CLASSES[prediction.predicted_class].name}
-              <span className="confidence">
-                ({(prediction.confidence * 100).toFixed(1)}% sicurezza)
-              </span>
-            </div>
-          </div>
-        )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </div>
     );
   };
 
   return (
-    <div className="image-classifier">
-      <div className="upload-section">
-        <h2>📤 Carica Immagine</h2>
+    <div className="image-classifier card">
+      {/* Upload Section */}
+      <div className="upload-zone">
+        <div className="upload-header">
+          <h2>📸 Classifica Immagine</h2>
+        </div>
         
-        <input
-          type="file"
-          accept="image/*"
-          onChange={handleFileSelect}
-          className="file-input"
-          id="image-upload"
-        />
-        
-        <label htmlFor="image-upload" className="file-input-label">
-          {selectedFile ? '✅ Cambia Immagine' : '📁 Scegli Immagine'}
-        </label>
-
-        {preview && (
-          <div className="image-preview">
-            <img src={preview} alt="Preview" />
-            <p className="file-name">{selectedFile.name}</p>
-          </div>
-        )}
+        <div 
+          className="upload-area"
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+        >
+          <input
+            type="file"
+            accept="image/*"
+            onChange={handleFileSelect}
+            className="file-input"
+            id="image-upload"
+          />
+          
+          {!preview ? (
+            <label 
+              htmlFor="image-upload" 
+              className={`upload-placeholder ${isDragOver ? 'drag-over' : ''}`}
+            >
+              <div className="upload-icon">
+                {isDragOver ? '📥' : '📁'}
+              </div>
+              <div className="upload-text">
+                <span className="upload-primary">
+                  {isDragOver ? 'Rilascia qui l\'immagine' : 'Trascina un\'immagine'}
+                </span>
+                <span className="upload-secondary">
+                  {isDragOver ? '' : 'o clicca per selezionare'}
+                </span>
+              </div>
+            </label>
+          ) : (
+            <div className="image-preview-container">
+              <div className="image-preview">
+                <img src={preview} alt="Preview" />
+                <div className="image-overlay">
+                  <label htmlFor="image-upload" className="change-image-btn">
+                    🔄 Cambia
+                  </label>
+                </div>
+              </div>
+              <div className="file-info">
+                <span className="file-name">{selectedFile.name}</span>
+                <span className="file-size">
+                  {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
+                </span>
+              </div>
+            </div>
+          )}
+        </div>
 
         <button 
           onClick={classifyImage}
           disabled={!selectedFile || loading}
-          className="classify-btn"
+          className={`classify-btn ${loading ? 'loading' : ''}`}
         >
-          {loading ? '⏳ Classificando...' : '🔍 Classifica Immagine'}
+          {loading ? (
+            <>
+              <div className="btn-spinner"></div>
+              <span>Analizzando...</span>
+            </>
+          ) : (
+            <>
+              <span>🚀 Classifica</span>
+            </>
+          )}
         </button>
 
         {error && (
           <div className="error-message">
-            ❌ {error}
+            <span className="error-icon">⚠️</span>
+            <span>{error}</span>
           </div>
         )}
       </div>
 
+      {/* Results Section */}
       {renderPredictions()}
-
-      <div className="user-permissions">
-        <h3>🔐 I tuoi permessi:</h3>
-        <div className="allowed-classes">
-          {userRoles.map(role => {
-            const classInfo = Object.values(CIFAR10_CLASSES).find(c => c.role === role);
-            return classInfo ? (
-              <span key={role} className="allowed-class">
-                {classInfo.emoji} {classInfo.name}
-              </span>
-            ) : null;
-          })}
-        </div>
-      </div>
     </div>
   );
 }
