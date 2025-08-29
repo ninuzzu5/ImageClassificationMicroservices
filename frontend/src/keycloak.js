@@ -1,6 +1,6 @@
 import Keycloak from 'keycloak-js';
 
-// Configurazione Keycloak per versione 26.2 (SENZA /auth)
+// Configurazione Keycloak per versione 26.2 
 const keycloakConfig = {
   url: 'http://localhost:8080',  // NO /auth per versione 26.2
   realm: 'ImageClassifier',

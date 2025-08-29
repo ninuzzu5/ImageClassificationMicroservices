@@ -1,4 +1,3 @@
-import React from 'react';
 import './UserInfo.css';
 
 const ROLE_LABELS = {

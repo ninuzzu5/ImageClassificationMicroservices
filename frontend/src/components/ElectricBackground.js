@@ -10,7 +10,7 @@ const ElectricBackground = () => {
     const ctx = canvas.getContext('2d');
     let animationId;
 
-    // Imposta le dimensioni del canvas
+    // Imposto le dimensioni del canvas
     const resizeCanvas = () => {
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
@@ -22,7 +22,7 @@ const ElectricBackground = () => {
         this.y = yPosition;
         this.tubeWidth = 2;
         
-        // Calcola i punti della linea diagonale (135°)
+        // Calcol0 i punti della linea diagonale (135°)
         this.calculatePoints();
         
         // Impulso elettrico interno
@@ -39,7 +39,7 @@ const ElectricBackground = () => {
         const angle = 135;
         const radians = (angle * Math.PI) / 180;
         
-        // Calcola una linea che attraversa tutto lo schermo diagonalmente
+        // Calcolo una linea che attraversa tutto lo schermo diagonalmente
         // con un margine extra per coprire anche gli angoli
         const diagonal = Math.sqrt(canvas.width ** 2 + canvas.height ** 2);
         const extraLength = diagonal * 0.5; // Margine extra per sicurezza
@@ -48,8 +48,8 @@ const ElectricBackground = () => {
         const centerX = canvas.width / 2;
         const centerY = canvas.height / 2;
         
-        // Calcola i punti di inizio e fine della linea
-        // Trasla il centro della linea al punto y specificato
+        // Calcolo i punti di inizio e fine della linea
+        // Trasl0 il centro della linea al punto y specificato
         const offsetY = this.y - centerY;
         
         this.startX = centerX - (totalLength / 2) * Math.cos(radians);
@@ -64,7 +64,7 @@ const ElectricBackground = () => {
       }
 
       update() {
-        // Muovi l'impulso lungo la linea
+        // Attivo l'impulso lungo la linea
         this.pulse.position += this.pulse.speed;
         
         // Reset quando l'impulso esce dal tubo
@@ -77,7 +77,7 @@ const ElectricBackground = () => {
       }
 
       draw() {
-        // Disegna il tubo (effetto 3D leggero)
+        // Disegno il tubo (effetto 3D leggero)
         
         // Ombra del tubo per effetto depth
         ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
@@ -103,7 +103,7 @@ const ElectricBackground = () => {
         ctx.lineTo(this.endX, this.endY);
         ctx.stroke();
 
-        // Disegna l'impulso elettrico interno
+        // Disegno l'impulso elettrico interno
         if (this.pulse.position >= 0 && this.pulse.position <= this.totalLength) {
           this.drawPulse();
         }
@@ -115,7 +115,7 @@ const ElectricBackground = () => {
         
         if (startPos >= endPos) return;
         
-        // Calcola le coordinate del segmento illuminato
+        // Calcolo le coordinate del segmento illuminato
         const startProgress = startPos / this.totalLength;
         const endProgress = endPos / this.totalLength;
         
@@ -135,7 +135,7 @@ const ElectricBackground = () => {
         gradient.addColorStop(0.7, `rgba(130, 188, 88, ${this.pulse.intensity})`);
         gradient.addColorStop(1, `rgba(200, 255, 150, ${this.pulse.intensity})`);
         
-        // Disegna il glow interno
+        // Disegno il glow interno
         ctx.strokeStyle = gradient;
         ctx.lineWidth = this.tubeWidth * 3;
         ctx.lineCap = 'round';
@@ -159,15 +159,15 @@ const ElectricBackground = () => {
       }
     }
 
-    // Crea le linee con spaziatura regolare per coprire tutto lo sfondo
+    // Creo le linee con spaziatura regolare per coprire tutto lo sfondo
     const tubes = [];
     const createTubes = () => {
       tubes.length = 0;
       
       // Spaziatura più ampia per linee meno dense
-      const spacing = 200; // Aumentato da 120-150 a 200
-      
-      // Calcola l'area necessaria per coprire tutto lo schermo
+      const spacing = 200;
+
+      // Calcolo l'area necessaria per coprire tutto lo schermo
       const diagonal = Math.sqrt(canvas.width ** 2 + canvas.height ** 2);
       const margin = diagonal * 0.3;
       
