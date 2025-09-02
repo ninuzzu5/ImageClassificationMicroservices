@@ -37,12 +37,11 @@ services:
     image: image-classifier-frontend:latest
     container_name: image-classifier-frontend
     ports:
-      - "3000:80"            # http://localhost:3000 -> Nginx del frontend
+      - "3000:80"            
     depends_on:
       - keycloak
     restart: unless-stopped
-    # Monta keycloak.js come file di config "runtime" (così non devi rebuildare a ogni cambio)
-    # Assumendo che tu abbia keycloak.js nella root del repo:
+
     volumes:
       - ./keycloak.js:/usr/share/nginx/html/keycloak.js:ro
 

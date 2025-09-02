@@ -22,6 +22,9 @@ function App() {
       .then((authenticated) => {
         console.log('Keycloak initialized successfully. Authenticated:', authenticated);
         setAuthenticated(authenticated);
+          if (authenticated && keycloak.token) {
+  console.log("ACCESS TOKEN:", keycloak.token);
+}
         
         if (authenticated) {
           const roles = keycloak.realmAccess?.roles || [];
@@ -37,6 +40,7 @@ function App() {
         setLoading(false);
       });
   }, []);
+
 
   if (loading) {
     return (
