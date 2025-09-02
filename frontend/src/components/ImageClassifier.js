@@ -1,6 +1,10 @@
+// src/components/ImageClassifier.jsx
 import { useState } from 'react';
 import axios from 'axios';
+import { keycloak } from '../keycloak';
 import './ImageClassifier.css';
+
+const API_BASE = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000';
 
 const CIFAR10_CLASSES = {
   0: { name: 'airplane', emoji: '✈️', role: 'airplane-access' },
@@ -15,7 +19,32 @@ const CIFAR10_CLASSES = {
   9: { name: 'truck', emoji: '🚛', role: 'truck-access' }
 };
 
-function ImageClassifier({ token, userRoles }) {
+// Converte la risposta del backend ({label, confidence})
+// nel formato che il render attuale si aspetta:
+// { predicted_class, confidence, predictions: { "0": p0, ... } }
+function mapBackendToUI(resp) {
+  const label = resp?.label;
+  const confidence = typeof resp?.confidence === 'number' ? resp.confidence : 0;
+
+  const entry = Object.entries(CIFAR10_CLASSES).find(([, v]) => v.name === label);
+  const classId = entry ? parseInt(entry[0], 10) : null;
+
+  const n = Object.keys(CIFAR10_CLASSES).length;
+  const rest = classId !== null ? (1 - confidence) / (n - 1) : 1 / n;
+
+  const predictions = {};
+  for (const [id] of Object.entries(CIFAR10_CLASSES)) {
+    predictions[id] = (parseInt(id, 10) === classId) ? confidence : rest;
+  }
+
+  return {
+    predicted_class: classId ?? undefined,
+    confidence,
+    predictions
+  };
+}
+
+function ImageClassifier({ userRoles }) {
   const [selectedFile, setSelectedFile] = useState(null);
   const [preview, setPreview] = useState(null);
   const [prediction, setPrediction] = useState(null);
@@ -29,46 +58,33 @@ function ImageClassifier({ token, userRoles }) {
   };
 
   const processFile = (file) => {
-    if (file) {
-      if (file.type.startsWith('image/')) {
-        setSelectedFile(file);
-        
-        // Crea preview
-        const reader = new FileReader();
-        reader.onload = (e) => setPreview(e.target.result);
-        reader.readAsDataURL(file);
-        
-        // Reset stato precedente
-        setPrediction(null);
-        setError(null);
-      } else {
-        setError('Seleziona un file immagine valido');
-      }
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      setError('Seleziona un file immagine valido');
+      return;
     }
+    setSelectedFile(file);
+    const reader = new FileReader();
+    reader.onload = (e) => setPreview(e.target.result);
+    reader.readAsDataURL(file);
+    setPrediction(null);
+    setError(null);
   };
 
-  // Gestori drag and drop
+  // Drag & Drop
   const handleDragOver = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
+    e.preventDefault(); e.stopPropagation();
     setIsDragOver(true);
   };
-
   const handleDragLeave = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
+    e.preventDefault(); e.stopPropagation();
     setIsDragOver(false);
   };
-
   const handleDrop = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
+    e.preventDefault(); e.stopPropagation();
     setIsDragOver(false);
-
     const files = e.dataTransfer.files;
-    if (files && files[0]) {
-      processFile(files[0]);
-    }
+    if (files && files[0]) processFile(files[0]);
   };
 
   const classifyImage = async () => {
@@ -76,35 +92,45 @@ function ImageClassifier({ token, userRoles }) {
       setError('Seleziona prima un\'immagine');
       return;
     }
-
     setLoading(true);
     setError(null);
 
     try {
+      // refresh token prima della chiamata
+      await keycloak.updateToken(30);
+
       const formData = new FormData();
-      formData.append('image', selectedFile);
+      // NOME CAMPO ATTESO DAL BACKEND: 'file'
+      formData.append('file', selectedFile);
 
       const response = await axios.post(
-        'http://localhost:5000/api/classify',
+        `${API_BASE}/api/classify`,
         formData,
         {
           headers: {
             'Content-Type': 'multipart/form-data',
-            'Authorization': `Bearer ${token}`
-          }
+            'Authorization': `Bearer ${keycloak.token}`
+          },
+          timeout: 30000
         }
       );
 
-      setPrediction(response.data);
+      // Mappa risposta semplice -> formato UI esistente
+      const uiData = mapBackendToUI(response.data);
+      setPrediction(uiData);
+
     } catch (err) {
       console.error('Classification error:', err);
-      
-      if (err.response?.status === 403) {
+      const status = err.response?.status;
+
+      if (status === 403) {
         setError('Non hai i permessi per classificare questa immagine');
-      } else if (err.response?.status === 401) {
-        setError('Token scaduto. Ricarica la pagina per fare login');
+      } else if (status === 401) {
+        setError('Token scaduto o non valido. Effettua di nuovo il login.');
+      } else if (err.code === 'ECONNABORTED') {
+        setError('Timeout: il backend non ha risposto in tempo.');
       } else {
-        setError('Errore nella classificazione: ' + (err.response?.data?.error || err.message));
+        setError('Errore nella classificazione: ' + (err.response?.data?.detail || err.message));
       }
     } finally {
       setLoading(false);
@@ -114,9 +140,8 @@ function ImageClassifier({ token, userRoles }) {
   const renderPredictions = () => {
     if (!prediction) return null;
 
-    // Mostra solo i top 3 risultati
     const topPredictions = Object.entries(prediction.predictions)
-      .sort(([,a], [,b]) => b - a)
+      .sort(([, a], [, b]) => b - a)
       .slice(0, 3);
 
     return (
@@ -126,10 +151,10 @@ function ImageClassifier({ token, userRoles }) {
           {prediction.predicted_class !== undefined && (
             <div className="winner-badge">
               <span className="winner-emoji">
-                {CIFAR10_CLASSES[prediction.predicted_class].emoji}
+                {CIFAR10_CLASSES[prediction.predicted_class]?.emoji}
               </span>
               <span className="winner-text">
-                {CIFAR10_CLASSES[prediction.predicted_class].name}
+                {CIFAR10_CLASSES[prediction.predicted_class]?.name}
               </span>
               <span className="winner-confidence">
                 {(prediction.confidence * 100).toFixed(1)}%
@@ -137,15 +162,15 @@ function ImageClassifier({ token, userRoles }) {
             </div>
           )}
         </div>
-        
+
         <div className="predictions-compact">
           {topPredictions.map(([classId, probability], index) => {
-            const classInfo = CIFAR10_CLASSES[parseInt(classId)];
+            const classInfo = CIFAR10_CLASSES[parseInt(classId, 10)];
             const isWinner = classId === prediction.predicted_class?.toString();
-            
+
             return (
-              <div 
-                key={classId} 
+              <div
+                key={classId}
                 className={`prediction-compact ${isWinner ? 'winner' : ''}`}
                 style={{ animationDelay: `${index * 0.1}s` }}
               >
@@ -157,13 +182,13 @@ function ImageClassifier({ token, userRoles }) {
                   </div>
                   <div className="prediction-score">
                     <div className="score-bar">
-                      <div 
-                        className="score-fill" 
-                        style={{ 
-                          width: `${probability * 100}%`,
+                      <div
+                        className="score-fill"
+                        style={{
+                          width: `${Math.max(0, Math.min(100, probability * 100))}%`,
                           animationDelay: `${0.5 + index * 0.1}s`
                         }}
-                      ></div>
+                      />
                     </div>
                     <span className="score-text">
                       {(probability * 100).toFixed(1)}%
@@ -185,8 +210,8 @@ function ImageClassifier({ token, userRoles }) {
         <div className="upload-header">
           <h2>📸 Classifica Immagine</h2>
         </div>
-        
-        <div 
+
+        <div
           className="upload-area"
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
@@ -199,10 +224,10 @@ function ImageClassifier({ token, userRoles }) {
             className="file-input"
             id="image-upload"
           />
-          
+
           {!preview ? (
-            <label 
-              htmlFor="image-upload" 
+            <label
+              htmlFor="image-upload"
               className={`upload-placeholder ${isDragOver ? 'drag-over' : ''}`}
             >
               <div className="upload-icon">
@@ -237,7 +262,7 @@ function ImageClassifier({ token, userRoles }) {
           )}
         </div>
 
-        <button 
+        <button
           onClick={classifyImage}
           disabled={!selectedFile || loading}
           className={`classify-btn ${loading ? 'loading' : ''}`}
@@ -264,6 +289,13 @@ function ImageClassifier({ token, userRoles }) {
 
       {/* Results Section */}
       {renderPredictions()}
+
+      {/* (Facoltativo) Mostra i ruoli dell'utente */}
+      {userRoles?.length > 0 && (
+        <div style={{ marginTop: 12, opacity: 0.7, fontSize: 12 }}>
+          Ruoli: {userRoles.join(', ')}
+        </div>
+      )}
     </div>
   );
 }

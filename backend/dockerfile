@@ -1,0 +1,17 @@
+FROM python:3.11-slim
+
+ENV DEBIAN_FRONTEND=noninteractive PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY . .
+ENV KEYCLOAK_URL="http://keycloak:8080" KEYCLOAK_REALM="ImageClassifier" EXPECTED_AUDIENCE="classifier-app" VERIFY_AUDIENCE="false" PORT=8000
+EXPOSE 8000
+
+HEALTHCHECK --interval=30s --timeout=5s --retries=3 CMD curl -fsS "http://localhost:${PORT}/api/health" || exit 1
+
+CMD ["python", "app/main.py"]
+

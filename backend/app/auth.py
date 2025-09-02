@@ -1,56 +1,48 @@
-import os, time
+import os
+from fastapi import Depends, HTTPException, status
+from jose import jwt
 import httpx
-from fastapi import HTTPException, Security
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-import jwt  
 
-security = HTTPBearer()
+KEYCLOAK_URL = os.getenv("KEYCLOAK_URL", "http://localhost:8080")
+REALM = os.getenv("KEYCLOAK_REALM", "ImageClassifier")
+ISSUER = f"{KEYCLOAK_URL}/realms/{REALM}"
+ALGO = "RS256"
 
-KEYCLOAK_URL = os.getenv("KEYCLOAK_URL", "http://localhost:8080")  # es: http://keycloak:8080 in Docker
-KEYCLOAK_REALM = os.getenv("KEYCLOAK_REALM", "ImageClassifier")
-KEYCLOAK_AUDIENCE = os.getenv("KEYCLOAK_AUDIENCE", "classifier-app")
-ISSUER = f"{KEYCLOAK_URL}/realms/{KEYCLOAK_REALM}"
-JWKS_URL = f"{ISSUER}/protocol/openid-connect/certs"
+VERIFY_AUDIENCE = os.getenv("VERIFY_AUDIENCE", "false").lower() == "true"
+EXPECTED_AUDIENCE = os.getenv("EXPECTED_AUDIENCE", "classifier-app")
 
-_jwks_cache = {"keys": None, "exp": 0}
+_jwks = None
 
 async def _get_jwks():
-    now = time.time()
-    if _jwks_cache["keys"] and now < _jwks_cache["exp"]:
-        return _jwks_cache["keys"]
-    async with httpx.AsyncClient(timeout=5) as client:
-        r = await client.get(JWKS_URL)
-        r.raise_for_status()
-        data = r.json()
-    _jwks_cache["keys"] = data["keys"]
-    _jwks_cache["exp"] = now + 3600
-    return _jwks_cache["keys"]
+    global _jwks
+    if not _jwks:
+        async with httpx.AsyncClient() as c:
+            r = await c.get(f"{ISSUER}/protocol/openid-connect/certs", timeout=10)
+            r.raise_for_status()
+            _jwks = r.json()
+    return _jwks
 
-async def get_current_user(creds: HTTPAuthorizationCredentials = Security(security)):
-    token = creds.credentials
+async def get_current_user(authorization: str | None = None):
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing token")
+    token = authorization.split(" ", 1)[1]
+
+    jwks = await _get_jwks()
+    options = {"verify_aud": VERIFY_AUDIENCE}
+    kwargs = {"issuer": ISSUER, "algorithms": [ALGO]}
+    if VERIFY_AUDIENCE:
+        kwargs["audience"] = EXPECTED_AUDIENCE
+
     try:
-        unverified = jwt.get_unverified_header(token)
-        kid = unverified.get("kid")
-        keys = await _get_jwks()
-        key = next((k for k in keys if k.get("kid") == kid), None)
-        if not key:
-            raise Exception("Signing key not found")
-
-        public_key = jwt.algorithms.RSAAlgorithm.from_jwk(key)
-
-        payload = jwt.decode(
-            token,
-            public_key,
-            algorithms=["RS256"],
-            issuer=ISSUER,
-            options={
-                "verify_aud": False,      # disattiviamo l'audience per sbloccarci
-                "verify_at_hash": False
-            },
-        )
-        return payload
-
+        claims = jwt.decode(token, jwks, options=options, **kwargs)
+        return claims
     except Exception as e:
-        # se vuoi vedere l'errore preciso in log:
-        # import traceback; print("JWT error:", e, traceback.format_exc())
-        raise HTTPException(status_code=401, detail="Invalid or expired token")
+        raise HTTPException(status_code=401, detail=f"Invalid token: {e}")
+
+def require_role(role: str):
+    async def checker(user = Depends(get_current_user)):
+        roles = (user.get("realm_access") or {}).get("roles", [])
+        if role not in roles:
+            raise HTTPException(status_code=403, detail="Forbidden")
+        return user
+    return checker

@@ -1,20 +1,19 @@
 volumes:
   postgres_data:
-    driver: local
 
 services:
   postgres:
-    image: postgres
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
+    image: postgres:16
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
   keycloak:
     image: quay.io/keycloak/keycloak:26.2
     command: start-dev
-    restart: always
     environment:
       KC_DB: postgres
       KC_DB_URL_HOST: postgres
@@ -23,25 +22,33 @@ services:
       KC_DB_DATABASE: ${POSTGRES_DB}
       KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN}
       KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
-    ports:
-      - 8080:8080
     depends_on:
       - postgres
-    volumes:
-      - ./themes:/opt/keycloak/themes:ro
-  
+    ports:
+      - "8080:8080"
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    environment:
+      KEYCLOAK_URL: http://keycloak:8080
+      KEYCLOAK_REALM: ImageClassifier
+      EXPECTED_AUDIENCE: classifier-app
+      VERIFY_AUDIENCE: "false"
+    depends_on:
+      - keycloak
+    ports:
+      - "8000:8000"
+
   frontend:
     build:
       context: ./frontend
-      dockerfile: dockerfile
-    image: image-classifier-frontend:latest
-    container_name: image-classifier-frontend
-    ports:
-      - "3000:80"            
+      dockerfile: Dockerfile
+      args:
+        - REACT_APP_API_BASE_URL=http://localhost:8000
     depends_on:
+      - backend
       - keycloak
-    restart: unless-stopped
-
-    volumes:
-      - ./keycloak.js:/usr/share/nginx/html/keycloak.js:ro
-
+    ports:
+      - "3000:80"
