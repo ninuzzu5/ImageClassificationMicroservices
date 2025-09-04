@@ -1,20 +1,19 @@
 volumes:
   postgres_data:
-    driver: local
 
 services:
   postgres:
-    image: postgres
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
+    image: postgres:16
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
   keycloak:
     image: quay.io/keycloak/keycloak:26.2
     command: start-dev
-    restart: always
     environment:
       KC_DB: postgres
       KC_DB_URL_HOST: postgres
@@ -23,9 +22,38 @@ services:
       KC_DB_DATABASE: ${POSTGRES_DB}
       KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN}
       KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
-    ports:
-      - 8080:8080
     depends_on:
       - postgres
+    ports:
+      - "8080:8080"
     volumes:
       - ./themes:/opt/keycloak/themes:ro
+
+  backend:
+    build:
+      context: ./authz-backend-fastapi
+      dockerfile: Dockerfile
+    environment:
+      - KEYCLOAK_ISSUER_URL=http://localhost:8080/realms/ImageClassifier  
+      - KEYCLOAK_CLIENT_ID=classifier-app
+      - KEYCLOAK_AUDIENCE=
+      - ALLOWED_ORIGINS=["http://localhost:3000","http://localhost:5173"]
+      - JWKS_CACHE_TTL=3600
+      - MODEL_FILE=app/models/neural_net.pt
+      - MODEL_ARCH_NAME=resnet18
+    depends_on:
+      - keycloak
+    ports:
+      - "8000:8000"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        - REACT_APP_API_BASE_URL=/api
+    depends_on:
+      - backend
+      - keycloak
+    ports:
+      - "3000:80"

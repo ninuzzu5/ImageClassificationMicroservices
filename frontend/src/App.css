@@ -101,7 +101,7 @@ body {
   }
 }
 
-/* Card base migliorata */
+/* Card base */
 .card {
   background: rgba(239, 239, 239, 0.08);
   backdrop-filter: blur(25px);

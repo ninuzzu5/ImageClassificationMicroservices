@@ -1,0 +1,30 @@
+# ---------- Build stage ----------
+FROM node:22-alpine AS build
+ENV NODE_ENV=production
+WORKDIR /app
+
+# Solo i manifest per sfruttare la cache
+COPY package*.json ./
+RUN npm ci --omit=dev
+
+# Build-time env per React
+ARG REACT_APP_API_BASE_URL=/api
+ENV REACT_APP_API_BASE_URL=$REACT_APP_API_BASE_URL
+
+# Codice e build
+COPY . .
+RUN npm run build
+
+# ---------- Runtime stage ----------
+FROM nginx:alpine
+# Config Nginx (reverse proxy + SPA fallback)
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+
+# Statici
+COPY --from=build /app/build /usr/share/nginx/html
+
+# Healthcheck semplice
+HEALTHCHECK --interval=30s --timeout=3s --retries=3 CMD wget -qO- http://localhost/ || exit 1
+
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]
