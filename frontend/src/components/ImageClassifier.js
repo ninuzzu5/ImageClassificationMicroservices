@@ -4,7 +4,7 @@ import axios from 'axios';
 import { keycloak } from '../keycloak';
 import './ImageClassifier.css';
 
-const API_BASE = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000';
+const API_BASE = process.env.REACT_APP_API_BASE_URL || '/api';
 
 const CIFAR10_CLASSES = {
   0: { name: 'airplane', emoji: '✈️', role: 'airplane-access' },

@@ -29,12 +29,29 @@ services:
     volumes:
       - ./themes:/opt/keycloak/themes:ro
 
+  backend:
+    build:
+      context: ./authz-backend-fastapi
+      dockerfile: Dockerfile
+    environment:
+      - KEYCLOAK_ISSUER_URL=http://localhost:8080/realms/ImageClassifier  
+      - KEYCLOAK_CLIENT_ID=classifier-app
+      - KEYCLOAK_AUDIENCE=
+      - ALLOWED_ORIGINS=["http://localhost:3000","http://localhost:5173"]
+      - JWKS_CACHE_TTL=3600
+      - MODEL_FILE=app/models/neural_net.pt
+      - MODEL_ARCH_NAME=resnet18
+    depends_on:
+      - keycloak
+    ports:
+      - "8000:8000"
+
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        - REACT_APP_API_BASE_URL=http://localhost:8000
+        - REACT_APP_API_BASE_URL=/api
     depends_on:
       - backend
       - keycloak
