@@ -12,7 +12,7 @@ const keycloak = new Keycloak(keycloakConfig);
 
 // Opzioni di inizializzazione per debug
 const initOptions = {
-  onLoad: 'login-required',
+  onLoad: 'check-sso',
   checkLoginIframe: false,
   pkceMethod: 'S256',
   enableLogging: true,

@@ -26,20 +26,8 @@ services:
       - postgres
     ports:
       - "8080:8080"
-
-  backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    environment:
-      KEYCLOAK_URL: http://keycloak:8080
-      KEYCLOAK_REALM: ImageClassifier
-      EXPECTED_AUDIENCE: classifier-app
-      VERIFY_AUDIENCE: "false"
-    depends_on:
-      - keycloak
-    ports:
-      - "8000:8000"
+    volumes:
+      - ./themes:/opt/keycloak/themes:ro
 
   frontend:
     build:
