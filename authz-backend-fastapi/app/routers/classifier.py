@@ -4,29 +4,40 @@ from PIL import Image
 import torch
 from torchvision import transforms, models
 from torch import nn
-from typing import Optional
+from typing import Optional, List
 from app.auth import get_current_user
 from app.schemas import User
 from app.config import settings
 
 router = APIRouter(prefix="/api", tags=["classifier"])
 
-CLASSES = [
+# CIFAR-10 labels
+CLASSES: List[str] = [
     "airplane", "automobile", "bird", "cat", "deer",
     "dog", "frog", "horse", "ship", "truck"
 ]
 
+# Preprocessing: mantieni proporzioni (meno distorsione su foto reali)
 _transform = transforms.Compose([
-    transforms.Resize((32, 32)),
+    transforms.Resize(36),          # lato corto -> 36
+    transforms.CenterCrop(32),      # crop centrale 32x32
     transforms.ToTensor(),
     transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
 ])
 
+
+TOPK = 3
+THRESH = 0.40
+
+# --- Model cache ---
 MODEL: Optional[torch.nn.Module] = None
 _MODEL_ERR: Optional[str] = None
 
+
 def _build_arch(name: str) -> nn.Module:
-    name = name.lower()
+    """Costruisce l'architettura corrispondente al tuo state_dict."""
+    name = (name or "").lower()
+
     if name == "resnet18":
         m = models.resnet18(weights=None)
         m.fc = nn.Linear(m.fc.in_features, 10)
@@ -44,30 +55,41 @@ def _build_arch(name: str) -> nn.Module:
         m.classifier[-1] = nn.Linear(m.classifier[-1].in_features, 10)
         return m
 
-    class SimpleCnn(nn.Module):
-        def __init__(self):
-            super().__init__()
-            self.net = nn.Sequential(
-                nn.Conv2d(3, 32, 3, padding=1), nn.ReLU(),
-                nn.Conv2d(32, 32, 3, padding=1), nn.ReLU(),
-                nn.MaxPool2d(2),                # 16x16
-                nn.Conv2d(32, 64, 3, padding=1), nn.ReLU(),
-                nn.MaxPool2d(2),                # 8x8
-                nn.Flatten(),
-                nn.Linear(64*8*8, 256), nn.ReLU(),
-                nn.Linear(256, 10)
-            )
-        def forward(self, x): return self.net(x)
-    return SimpleCnn()
+    # LeNet-like (conv1: 3->6 k=5; conv2: 6->16 k=5; fc: 120->84->10)
+    if name in ("lenet", "simple_cnn", ""):
+        class LeNet(nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.conv1 = nn.Conv2d(3, 6, kernel_size=5)   # -> [6, 28, 28]
+                self.pool  = nn.MaxPool2d(2, 2)               # -> [6, 14, 14]
+                self.conv2 = nn.Conv2d(6, 16, kernel_size=5)  # -> [16, 10, 10]
+                self.fc1   = nn.Linear(16*5*5, 120)
+                self.fc2   = nn.Linear(120, 84)
+                self.fc3   = nn.Linear(84, 10)
+
+            def forward(self, x):
+                x = torch.relu(self.conv1(x))
+                x = self.pool(x)
+                x = torch.relu(self.conv2(x))
+                x = self.pool(x)
+                x = torch.flatten(x, 1)
+                x = torch.relu(self.fc1(x))
+                x = torch.relu(self.fc2(x))
+                x = self.fc3(x)
+                return x
+        return LeNet()
+
 
 def _try_load_model() -> nn.Module:
+    """Carica il modello (TorchScript -> nn.Module -> state_dict con arch)."""
     global _MODEL_ERR
     _MODEL_ERR = None
-    mp = Path(settings.model_path)
 
+    mp = Path(settings.model_file)
     if not mp.exists():
         raise RuntimeError(f"Modello non trovato: {mp}")
 
+    # 1) TorchScript
     try:
         m = torch.jit.load(str(mp), map_location="cpu")
         m.eval()
@@ -75,24 +97,26 @@ def _try_load_model() -> nn.Module:
     except Exception:
         pass
 
+    # 2) nn.Module picklato o state_dict
     try:
         obj = torch.load(str(mp), map_location="cpu")
         if hasattr(obj, "eval"):
             obj.eval()
             return obj
-        state_dict = obj
+        state_dict = obj  # presumibilmente state_dict
     except Exception:
         raise RuntimeError("Impossibile caricare il file come TorchScript o nn.Module")
 
-    arch = _build_arch(settings.model_arch)
+    # 3) state_dict -> costruisci arch e carica
+    arch = _build_arch(settings.model_arch_name)
     missing, unexpected = arch.load_state_dict(state_dict, strict=False)
-
     if missing or unexpected:
-        _MODEL_ERR = f"State_dict con chiavi non perfette (missing={len(missing)}, unexpected={len(unexpected)})"
+        _MODEL_ERR = f"State_dict parzialmente compatibile (missing={len(missing)}, unexpected={len(unexpected)})"
     arch.eval()
     return arch
 
-def _get_model() -> nn.Module:
+
+def _get_model() -> Optional[nn.Module]:
     global MODEL, _MODEL_ERR
     if MODEL is None:
         try:
@@ -101,33 +125,75 @@ def _get_model() -> nn.Module:
             _MODEL_ERR = str(e)
     return MODEL
 
+
 @router.post("/classify")
 async def classify_image(
     file: UploadFile = File(...),
     user: User = Depends(get_current_user)
 ):
+    # Caricamento modello lazy
     model = _get_model()
     if model is None:
         raise HTTPException(status_code=503, detail=f"Modello non disponibile: {_MODEL_ERR or 'errore sconosciuto'}")
 
+    # Validazione input
     if not file.content_type or not file.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="Carica un file immagine valido")
 
+    # Preprocess
     img = Image.open(file.file).convert("RGB")
-    x = _transform(img).unsqueeze(0)
+    x = _transform(img).unsqueeze(0)  # [1,3,32,32]
 
+    # Inferenza
     with torch.no_grad():
         logits = model(x)
         if isinstance(logits, (list, tuple)):
             logits = logits[0]
-        probs = torch.softmax(logits, dim=1)
-        conf, idx = torch.max(probs, dim=1)
+        probs = torch.softmax(logits, dim=1).squeeze(0)  # [10]
 
-    label = CLASSES[idx.item()]
-    confidence = float(conf.item())
+    # Top-K
+    k = min(TOPK, probs.numel())
+    confs, idxs = torch.topk(probs, k=k)
+    topk = [{"label": CLASSES[i.item()], "confidence": float(c.item())}
+            for c, i in zip(confs, idxs)]
 
-    required_role = f"{label}-access"
-    if required_role not in (user.roles or []):
-        raise HTTPException(status_code=403, detail=f"Non hai il ruolo {required_role}")
+    user_roles = set(user.roles or [])
 
-    return {"label": label, "confidence": confidence}
+    # Admin bypass
+    if  user_roles == "admin":
+        return {
+            "label": topk[0]["label"],
+            "confidence": topk[0]["confidence"],
+            "topk": topk,
+            "authorized": True,
+            "reason": "admin-bypass"
+        }
+
+    # RBAC su Top-K con soglia
+    allowed = False
+    matched_role = None
+    for entry in topk:
+        if entry["confidence"] >= THRESH:
+            req = f"{entry['label']}-access"
+            if req in user_roles:
+                allowed = True
+                matched_role = req
+                break
+
+    if not allowed:
+        required_role = f"{topk[0]['label']}-access"
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "message": f"Nessuna classe tra le top-{k} ≥ {THRESH:.2f} corrisponde a un tuo ruolo. Richiesto tipicamente: {required_role}.",
+                "topk": topk
+            }
+        )
+
+    return {
+        "label": topk[0]["label"],
+        "confidence": topk[0]["confidence"],
+        "topk": topk,
+        "authorized": True,
+        "matched_role": matched_role
+    }

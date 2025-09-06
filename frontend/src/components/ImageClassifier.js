@@ -1,6 +1,5 @@
-// src/components/ImageClassifier.jsx
-import { useState } from 'react';
-import axios from 'axios';
+import { useState, useRef } from 'react';
+import api from '../api';
 import { keycloak } from '../keycloak';
 import './ImageClassifier.css';
 
@@ -9,7 +8,7 @@ const API_BASE = process.env.REACT_APP_API_BASE_URL || '/api';
 const CIFAR10_CLASSES = {
   0: { name: 'airplane', emoji: '✈️', role: 'airplane-access' },
   1: { name: 'automobile', emoji: '🚗', role: 'automobile-access' },
-  2: { name: 'bird', emoji: '🐦', role: 'bird-access' },
+  2: { name: 'bird', emoji: '🦅', role: 'bird-access' },
   3: { name: 'cat', emoji: '🐱', role: 'cat-access' },
   4: { name: 'deer', emoji: '🦌', role: 'deer-access' },
   5: { name: 'dog', emoji: '🐕', role: 'dog-access' },
@@ -19,9 +18,6 @@ const CIFAR10_CLASSES = {
   9: { name: 'truck', emoji: '🚛', role: 'truck-access' }
 };
 
-// Converte la risposta del backend ({label, confidence})
-// nel formato che il render attuale si aspetta:
-// { predicted_class, confidence, predictions: { "0": p0, ... } }
 function mapBackendToUI(resp) {
   const label = resp?.label;
   const confidence = typeof resp?.confidence === 'number' ? resp.confidence : 0;
@@ -51,6 +47,7 @@ function ImageClassifier({ userRoles }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [isDragOver, setIsDragOver] = useState(false);
+  const resultsRef = useRef(null);
 
   const handleFileSelect = (event) => {
     const file = event.target.files[0];
@@ -100,38 +97,46 @@ function ImageClassifier({ userRoles }) {
       await keycloak.updateToken(30);
 
       const formData = new FormData();
-      // NOME CAMPO ATTESO DAL BACKEND: 'file'
       formData.append('file', selectedFile);
-
-      const response = await axios.post(
-        `${API_BASE}/api/classify`,
+      
+      const response = await api.post(
+        '/classify',
         formData,
-        {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-            'Authorization': `Bearer ${keycloak.token}`
-          },
-          timeout: 30000
-        }
+        { headers: { 'Content-Type': 'multipart/form-data' }, timeout: 30000 }
       );
 
-      // Mappa risposta semplice -> formato UI esistente
       const uiData = mapBackendToUI(response.data);
       setPrediction(uiData);
 
-    } catch (err) {
-      console.error('Classification error:', err);
-      const status = err.response?.status;
+      // Scroll automatico alla sezione risultati
+      setTimeout(() => {
+        if (resultsRef.current) {
+          resultsRef.current.scrollIntoView({ 
+            behavior: 'smooth', 
+            block: 'start',
+            inline: 'nearest'
+          });
+        }
+      }, 100);
 
-      if (status === 403) {
-        setError('Non hai i permessi per classificare questa immagine');
-      } else if (status === 401) {
-        setError('Token scaduto o non valido. Effettua di nuovo il login.');
-      } else if (err.code === 'ECONNABORTED') {
-        setError('Timeout: il backend non ha risposto in tempo.');
-      } else {
-        setError('Errore nella classificazione: ' + (err.response?.data?.detail || err.message));
-      }
+    }  catch (err) {
+      const status = err.response?.status;
+      if (status === 403) setError('Non hai i permessi per questa classe (RBAC).');
+      else if (status === 401) setError('Sessione scaduta: rifai login.');
+      else if (status === 503) setError('Modello non disponibile (controlla MODEL_ARCH/MODEL_FILE).');
+      else if (err.code === 'ECONNABORTED') setError('Timeout: backend lento o non raggiungibile.');
+      else setError('Errore: ' + (err.response?.data?.detail || err.message));
+      
+      // Scroll automatico alla sezione errore
+      setTimeout(() => {
+        if (resultsRef.current) {
+          resultsRef.current.scrollIntoView({ 
+            behavior: 'smooth', 
+            block: 'start',
+            inline: 'nearest'
+          });
+        }
+      }, 100);
     } finally {
       setLoading(false);
     }
@@ -231,7 +236,7 @@ function ImageClassifier({ userRoles }) {
               className={`upload-placeholder ${isDragOver ? 'drag-over' : ''}`}
             >
               <div className="upload-icon">
-                {isDragOver ? '📥' : '📁'}
+                {isDragOver ? '🔥' : '📁'}
               </div>
               <div className="upload-text">
                 <span className="upload-primary">
@@ -280,7 +285,7 @@ function ImageClassifier({ userRoles }) {
         </button>
 
         {error && (
-          <div className="error-message">
+          <div className="error-message" ref={resultsRef}>
             <span className="error-icon">⚠️</span>
             <span>{error}</span>
           </div>
@@ -288,9 +293,10 @@ function ImageClassifier({ userRoles }) {
       </div>
 
       {/* Results Section */}
-      {renderPredictions()}
+      <div ref={!error ? resultsRef : null}>
+        {renderPredictions()}
+      </div>
 
-      {/* (Facoltativo) Mostra i ruoli dell'utente */}
       {userRoles?.length > 0 && (
         <div style={{ marginTop: 12, opacity: 0.7, fontSize: 12 }}>
           Ruoli: {userRoles.join(', ')}

@@ -4,9 +4,7 @@ import httpx
 from jose import jwt
 from jose.utils import base64url_decode
 from loguru import logger
-
 from app.config import settings
-
 
 class JWKSCache:
     def __init__(self, ttl_seconds: int):
@@ -35,15 +33,20 @@ async def _fetch_json(url: str) -> Dict[str, Any]:
 
 
 async def get_openid_configuration() -> Dict[str, Any]:
+    if settings.keycloak_well_known_url:
+        return await _fetch_json(settings.keycloak_well_known_url)
     well_known = f"{settings.keycloak_issuer_url}/.well-known/openid-configuration"
-    conf = await _fetch_json(well_known)
-    return conf
+    return await _fetch_json(well_known)
 
 
 async def get_jwks() -> Dict[str, Any]:
     cached = _jwks_cache.get()
     if cached:
         return cached
+    if settings.keycloak_jwks_url:
+        keys = await _fetch_json(settings.keycloak_jwks_url)
+        _jwks_cache.set(keys)
+        return keys
     conf = await get_openid_configuration()
     jwks_uri = conf.get("jwks_uri")
     if not jwks_uri:
@@ -68,7 +71,6 @@ def _collect_roles(payload: Dict[str, Any]) -> Tuple[List[str], str]:
         if isinstance(client, dict) and isinstance(client.get("roles"), list):
             roles.extend(client["roles"])
             source = "client"
-    # Deduplicate while preserving order
     seen = set()
     deduped = []
     for r in roles:
@@ -79,7 +81,6 @@ def _collect_roles(payload: Dict[str, Any]) -> Tuple[List[str], str]:
 
 
 async def verify_and_decode(token: str) -> Dict[str, Any]:
-    # 1) Get unverified header for kid
     try:
         unverified_header = jwt.get_unverified_header(token)
     except Exception as e:
@@ -105,7 +106,7 @@ async def verify_and_decode(token: str) -> Dict[str, Any]:
     verify_opts = {"verify_aud": bool(settings.keycloak_audience)}
     payload = jwt.decode(
         token,
-        rsa_key,  # python-jose can take the JWK directly
+        rsa_key,  
         algorithms=["RS256"],
         audience=settings.keycloak_audience if settings.keycloak_audience else None,
         issuer=settings.keycloak_issuer_url,
