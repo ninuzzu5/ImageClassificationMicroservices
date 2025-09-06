@@ -22,9 +22,10 @@ function App() {
       .then((authenticated) => {
         console.log('Keycloak initialized successfully. Authenticated:', authenticated);
         setAuthenticated(authenticated);
-          if (authenticated && keycloak.token) {
-  console.log("ACCESS TOKEN:", keycloak.token);
-}
+        
+        if (authenticated && keycloak.token) {
+          console.log("ACCESS TOKEN:", keycloak.token);
+        }
         
         if (authenticated) {
           const roles = keycloak.realmAccess?.roles || [];
@@ -71,21 +72,17 @@ function App() {
     <div className="App">
       <ElectricBackground />
       
-      {/* Layout fluido senza header fisso */}
       <div className="fluid-container">
-        {/* Titolo principale */}
         <div className="main-title">
           <h1>IMAGE CLASSIFIER</h1>
         </div>
         
-        {/* Card UserInfo compatta */}
         <UserInfo 
           username={keycloak.tokenParsed?.preferred_username}
           roles={userRoles}
           onLogout={() => keycloak.logout()}
         />
         
-        {/* Card ImageClassifier principale */}
         <ImageClassifier 
           token={keycloak.token}
           userRoles={userRoles}

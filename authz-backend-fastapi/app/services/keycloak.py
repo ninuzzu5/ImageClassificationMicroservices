@@ -4,9 +4,7 @@ import httpx
 from jose import jwt
 from jose.utils import base64url_decode
 from loguru import logger
-
 from app.config import settings
-
 
 class JWKSCache:
     def __init__(self, ttl_seconds: int):
@@ -35,15 +33,20 @@ async def _fetch_json(url: str) -> Dict[str, Any]:
 
 
 async def get_openid_configuration() -> Dict[str, Any]:
+    if settings.keycloak_well_known_url:
+        return await _fetch_json(settings.keycloak_well_known_url)
     well_known = f"{settings.keycloak_issuer_url}/.well-known/openid-configuration"
-    conf = await _fetch_json(well_known)
-    return conf
+    return await _fetch_json(well_known)
 
 
 async def get_jwks() -> Dict[str, Any]:
     cached = _jwks_cache.get()
     if cached:
         return cached
+    if settings.keycloak_jwks_url:
+        keys = await _fetch_json(settings.keycloak_jwks_url)
+        _jwks_cache.set(keys)
+        return keys
     conf = await get_openid_configuration()
     jwks_uri = conf.get("jwks_uri")
     if not jwks_uri:

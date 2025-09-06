@@ -1,5 +1,4 @@
-# app/config.py
-from typing import List
+from typing import List, Optional
 from pydantic import Field, AliasChoices, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -8,6 +7,8 @@ class Settings(BaseSettings):
     keycloak_issuer_url: str  = "http://keycloak:8080/realms/ImageClassifier"
     keycloak_audience: str | None = None
     keycloak_client_id: str | None = None
+    keycloak_well_known_url: Optional[str] = None  
+    keycloak_jwks_url: Optional[str] = None 
 
     # --- CORS ---
     allowed_origins: List[str] = ["http://localhost:5173", "http://localhost:3000"]

@@ -19,9 +19,6 @@ const CIFAR10_CLASSES = {
   9: { name: 'truck', emoji: '🚛', role: 'truck-access' }
 };
 
-// Converte la risposta del backend ({label, confidence})
-// nel formato che il render attuale si aspetta:
-// { predicted_class, confidence, predictions: { "0": p0, ... } }
 function mapBackendToUI(resp) {
   const label = resp?.label;
   const confidence = typeof resp?.confidence === 'number' ? resp.confidence : 0;
