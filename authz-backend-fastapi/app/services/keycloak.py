@@ -71,7 +71,6 @@ def _collect_roles(payload: Dict[str, Any]) -> Tuple[List[str], str]:
         if isinstance(client, dict) and isinstance(client.get("roles"), list):
             roles.extend(client["roles"])
             source = "client"
-    # Deduplicate while preserving order
     seen = set()
     deduped = []
     for r in roles:
@@ -82,7 +81,6 @@ def _collect_roles(payload: Dict[str, Any]) -> Tuple[List[str], str]:
 
 
 async def verify_and_decode(token: str) -> Dict[str, Any]:
-    # 1) Get unverified header for kid
     try:
         unverified_header = jwt.get_unverified_header(token)
     except Exception as e:
@@ -108,7 +106,7 @@ async def verify_and_decode(token: str) -> Dict[str, Any]:
     verify_opts = {"verify_aud": bool(settings.keycloak_audience)}
     payload = jwt.decode(
         token,
-        rsa_key,  # python-jose can take the JWK directly
+        rsa_key,  
         algorithms=["RS256"],
         audience=settings.keycloak_audience if settings.keycloak_audience else None,
         issuer=settings.keycloak_issuer_url,

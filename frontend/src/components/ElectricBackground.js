@@ -205,7 +205,6 @@ const ElectricBackground = () => {
     // Event listeners
     const handleResize = () => {
       resizeCanvas();
-      // Ricalcola solo i punti dei tubi esistenti invece di ricrearli tutti
       tubes.forEach(tube => tube.calculatePoints());
     };
 

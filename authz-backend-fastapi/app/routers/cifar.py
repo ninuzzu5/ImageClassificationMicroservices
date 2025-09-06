@@ -12,7 +12,7 @@ CIFAR10_CLASSES = [
 
 
 def role_for_label(label: str) -> str:
-    return f"{label}-access"  # e.g., 'bird-access'
+    return f"{label}-access"  
 
 
 @router.get("/{label}/can-use")
@@ -25,5 +25,4 @@ async def can_use_label(label: str, user: User = Depends(get_current_user)):
 
 @router.get("/{label}/secret", dependencies=[Depends(roles_required("bird-access"))])
 async def only_birds(user: User = Depends(get_current_user)):
-    # Example protected endpoint: adjust as needed (or generate dynamically per label)
     return {"msg": "Only users with bird-access can reach this."}
