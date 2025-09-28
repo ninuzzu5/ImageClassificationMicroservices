@@ -25,13 +25,13 @@ services:
     depends_on:
       - postgres
     ports:
-      - "8080:8080"
+      - "8080:8080" 
     volumes:
       - ./themes:/opt/keycloak/themes:ro
 
   backend:
     build:
-      context: ./authz-backend-fastapi
+      context: ./backend
       dockerfile: Dockerfile
     environment:
       - KEYCLOAK_ISSUER_URL=http://localhost:8080/realms/ImageClassifier
